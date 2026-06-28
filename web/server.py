@@ -131,13 +131,24 @@ async def chat(req: ChatRequest):
         if collected_content:
             save_message(req.session_id, "assistant", collected_content)
 
-            if len(history) <= 1:
-                generate_title(req.session_id)
-
         yield {
             "event": "done",
             "data": json.dumps({"content": collected_content}, ensure_ascii=False),
         }
+
+        if collected_content and len(history) <= 1:
+            try:
+                generate_title(req.session_id)
+                sessions = list_sessions()
+                for s in sessions:
+                    if s["id"] == req.session_id and s["name"] != "新对话":
+                        yield {
+                            "event": "message",
+                            "data": json.dumps({"title": s["name"]}, ensure_ascii=False),
+                        }
+                        break
+            except Exception:
+                pass
 
     return EventSourceResponse(event_generator())
 

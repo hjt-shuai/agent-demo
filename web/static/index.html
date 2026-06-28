@@ -767,6 +767,13 @@ function handleEvent(data, msgDiv) {
       setTimeout(() => badge.remove(), 1500);
     }
   }
+  if (data.title && state.currentSessionId) {
+    const session = state.sessions.find(s => s.id === state.currentSessionId);
+    if (session) {
+      session.name = data.title;
+      renderSessions();
+    }
+  }
 }
 
 function appendMessage(role, content, isStreaming) {
