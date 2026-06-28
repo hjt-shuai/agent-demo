@@ -84,6 +84,20 @@ def rename_session(session_id: str, name: str):
     conn.close()
 
 
+def delete_last_assistant_message(session_id: str):
+    conn = get_conn()
+    conn.execute(
+        """DELETE FROM messages WHERE id IN (
+            SELECT id FROM messages
+            WHERE session_id = ? AND role = 'assistant'
+            ORDER BY id DESC LIMIT 1
+        )""",
+        (session_id,),
+    )
+    conn.commit()
+    conn.close()
+
+
 def save_message(session_id: str, role: str, content: str):
     conn = get_conn()
     now = datetime.now().isoformat()

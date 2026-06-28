@@ -16,6 +16,7 @@ from agent.memory.store import (
     delete_session,
     rename_session,
     save_message,
+    delete_last_assistant_message,
     get_messages,
 )
 
@@ -36,6 +37,37 @@ class CreateSessionRequest(BaseModel):
 
 class RenameSessionRequest(BaseModel):
     name: str
+
+
+def generate_title(session_id: str):
+    from langchain_openai import ChatOpenAI
+    from langchain_core.messages import HumanMessage
+    from config import settings
+
+    messages = get_messages(session_id)
+    if len(messages) < 2:
+        return
+
+    conversation = "\n".join(
+        f"{'用户' if m['role'] == 'user' else '助手'}: {m['content'][:150]}"
+        for m in messages[-4:]
+    )
+
+    try:
+        llm = ChatOpenAI(
+            api_key=settings.llm_api_key,
+            base_url=settings.llm_base_url,
+            model=settings.llm_model_name,
+            temperature=0.3,
+        )
+        response = llm.invoke(
+            [HumanMessage(content=f"根据以下对话，用中文生成一个简短的标题（不超过10个字），只返回标题：\n\n{conversation}")]
+        )
+        title = response.content.strip().strip('"\'').strip()
+        if title:
+            rename_session(session_id, title)
+    except Exception:
+        pass
 
 
 @app.get("/")
@@ -100,8 +132,7 @@ async def chat(req: ChatRequest):
             save_message(req.session_id, "assistant", collected_content)
 
             if len(history) <= 1:
-                name = req.message[:30] + ("..." if len(req.message) > 30 else "")
-                rename_session(req.session_id, name)
+                generate_title(req.session_id)
 
         yield {
             "event": "done",
@@ -136,3 +167,9 @@ async def update_session(session_id: str, req: RenameSessionRequest):
 @app.get("/api/sessions/{session_id}/messages")
 async def get_session_messages(session_id: str):
     return get_messages(session_id)
+
+
+@app.delete("/api/sessions/{session_id}/messages/last")
+async def remove_last_message(session_id: str):
+    delete_last_assistant_message(session_id)
+    return {"ok": True}
