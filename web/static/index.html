@@ -468,7 +468,7 @@
     <div class="input-area">
       <div class="input-wrapper">
         <textarea id="inputBox" rows="1" placeholder="输入消息..." onkeydown="handleKeydown(event)"></textarea>
-        <button class="send-btn" id="sendBtn" onclick="sendMessage()">发送</button>
+        <button class="send-btn" id="sendBtn" onclick="handleSendClick()">发送</button>
       </div>
     </div>
   </div>
@@ -627,6 +627,14 @@ async function loadMessages(sessionId) {
 }
 
 // Chat
+function handleSendClick() {
+  if (state.loading) {
+    stopGeneration();
+  } else {
+    sendMessage();
+  }
+}
+
 async function sendMessage(overrideContent) {
   const input = document.getElementById('inputBox');
   const content = overrideContent ?? input.value.trim();
@@ -789,7 +797,7 @@ function appendToBubble(msgDiv, text) {
 function handleKeydown(e) {
   if (e.key === 'Enter' && !e.shiftKey) {
     e.preventDefault();
-    sendMessage();
+    handleSendClick();
   }
   setTimeout(() => {
     const el = e.target;
